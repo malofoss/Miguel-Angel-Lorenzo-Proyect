@@ -10,9 +10,9 @@ def train(config=None):
     # Hiperparámetros (serán optimizados por el AG más adelante)
     if config is None:
         config = {
-            "learning_rate": 0.001,
+            "learning_rate": 0.0001,
             "batch_size": 32,
-            "dropout": 0.5,
+            "dropout": 0.2,
             "epochs": 20
         }
 
