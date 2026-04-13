@@ -43,101 +43,108 @@ def nueva_frase():
 def transcribir_desde_gradio(audio):
     if audio is None:
         return None
-
     sample_rate, data = audio
-
     if data.ndim > 1:
         data = data[:, 0]
-
     if data.dtype != np.int16:
         max_val = np.max(np.abs(data))
         if max_val > 0:
             data = (data / max_val * 32767).astype(np.int16)
         else:
             data = data.astype(np.int16)
-
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
         wav.write(f.name, sample_rate, data)
         ruta_tmp = f.name
-
     recognizer = sr.Recognizer()
-
     try:
         with sr.AudioFile(ruta_tmp) as source:
             audio_rec = recognizer.record(source)
         texto = recognizer.recognize_google(audio_rec, language="es-ES")
         return texto
-    except sr.UnknownValueError:
-        return None
-    except sr.RequestError:
+    except (sr.UnknownValueError, sr.RequestError):
         return None
     finally:
         if os.path.exists(ruta_tmp):
             os.unlink(ruta_tmp)
 
-def procesar(imagen, audio, frase):
-    if imagen is None:
-        return "Sin imagen cargada.", "Sin imagen cargada."
+def verificar_voz(audio, frase):
+    """
+    Verifica la voz y devuelve:
+    - mensaje de resultado
+    - visibilidad del paso 1 (se oculta si pasa)
+    - visibilidad del paso 2 (se muestra si pasa)
+    """
+    transcripcion = transcribir_desde_gradio(audio)
+    resultado = verificar_lectura(frase, transcripcion, umbral=0.75)
+    detectado = resultado.get("frase_detectada", "No detectado")
+    similitud = resultado["similitud"]
 
+    if resultado["verificado"]:
+        msg = f"VERIFICADO ({similitud:.0%}) — Transcrito: \"{detectado}\"\nAvanzando a verificacion de edad..."
+        return msg, gr.update(visible=False), gr.update(visible=True)
+    else:
+        msg = f"NO VERIFICADO ({similitud:.0%}) — Transcrito: \"{detectado}\"\nVuelve a intentarlo."
+        return msg, gr.update(visible=True), gr.update(visible=False)
+
+def predecir_edad(imagen):
+    if imagen is None:
+        return "Sin imagen cargada."
     img_pil = Image.fromarray(imagen).convert("RGB")
     tensor = TRANSFORM(img_pil).unsqueeze(0).to(DEVICE)
-
     with torch.no_grad():
         edad = modelo(tensor).item()
+    return f"Edad estimada: {round(edad)} anos"
 
-    resultado_edad = f"Edad estimada: {round(edad)} anos"
 
-    if audio is None:
-        return resultado_edad, "No se recibio audio."
-
-    transcripcion = transcribir_desde_gradio(audio)
-    resultado_voz = verificar_lectura(frase, transcripcion, umbral=0.75)
-
-    detectado = resultado_voz.get("frase_detectada", "No detectado")
-    similitud = resultado_voz["similitud"]
-
-    if resultado_voz["verificado"]:
-        texto_voz = f'VERIFICADO ({similitud:.0%})\nTranscrito: "{detectado}"'
-    else:
-        texto_voz = f'NO VERIFICADO ({similitud:.0%})\nTranscrito: "{detectado}"'
-
-    return resultado_edad, texto_voz
-
+# ---- Interfaz Gradio ----
 
 with gr.Blocks(title="Verificacion de Edad", theme=gr.themes.Soft()) as demo:
+
     gr.Markdown("# Sistema de Verificacion de Edad")
-    gr.Markdown("Sube una foto de tu cara y lee la frase en voz alta para verificar tu identidad.")
 
-    with gr.Row():
-        with gr.Column():
-            gr.Markdown("### 1. Imagen")
-            entrada_imagen = gr.Image(label="Foto del rostro", type="numpy")
+    # ── PASO 1: Verificacion por voz ──
+    with gr.Group(visible=True) as paso1:
+        gr.Markdown("## Paso 1 — Verificacion por voz")
+        gr.Markdown("Lee en voz alta la frase que aparece a continuacion y pulsa **Verificar voz**.")
 
-        with gr.Column():
-            gr.Markdown("### 2. Verificacion por voz")
-            frase_estado = gr.Textbox(
-                label="Frase a leer",
-                value=obtener_frase_aleatoria(),
-                interactive=False
-            )
-            btn_nueva_frase = gr.Button("Nueva frase", variant="secondary")
-            entrada_audio = gr.Audio(
-                label="Graba tu voz",
-                sources=["microphone"],
-                type="numpy"
-            )
+        frase_estado = gr.Textbox(
+            label="Frase a leer",
+            value=obtener_frase_aleatoria(),
+            interactive=False
+        )
+        btn_nueva_frase = gr.Button("Nueva frase", variant="secondary")
 
-    btn_verificar = gr.Button("Verificar", variant="primary", size="lg")
+        entrada_audio = gr.Audio(
+            label="Graba tu voz",
+            sources=["microphone"],
+            type="numpy"
+        )
 
-    with gr.Row():
-        salida_edad = gr.Textbox(label="Resultado edad", interactive=False)
+        btn_verificar_voz = gr.Button("Verificar voz", variant="primary", size="lg")
         salida_voz = gr.Textbox(label="Resultado verificacion", interactive=False)
 
+    # ── PASO 2: Estimacion de edad ──
+    with gr.Group(visible=False) as paso2:
+        gr.Markdown("## Paso 2 — Estimacion de edad")
+        gr.Markdown("Identidad verificada. Sube ahora una foto del rostro para estimar la edad.")
+
+        entrada_imagen = gr.Image(label="Foto del rostro", type="numpy")
+        btn_predecir = gr.Button("Estimar edad", variant="primary", size="lg")
+        salida_edad = gr.Textbox(label="Resultado edad", interactive=False)
+
+    # ── Eventos ──
     btn_nueva_frase.click(fn=nueva_frase, outputs=frase_estado)
-    btn_verificar.click(
-        fn=procesar,
-        inputs=[entrada_imagen, entrada_audio, frase_estado],
-        outputs=[salida_edad, salida_voz]
+
+    btn_verificar_voz.click(
+        fn=verificar_voz,
+        inputs=[entrada_audio, frase_estado],
+        outputs=[salida_voz, paso1, paso2]
+    )
+
+    btn_predecir.click(
+        fn=predecir_edad,
+        inputs=[entrada_imagen],
+        outputs=[salida_edad]
     )
 
 if __name__ == "__main__":
