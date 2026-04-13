@@ -87,13 +87,29 @@ def verificar_voz(audio, frase):
         return msg, gr.update(visible=True), gr.update(visible=False)
 
 def predecir_edad(imagen):
+    """Predice si es mayor de edad y la edad aproximada."""
     if imagen is None:
         return "Sin imagen cargada."
+
     img_pil = Image.fromarray(imagen).convert("RGB")
     tensor = TRANSFORM(img_pil).unsqueeze(0).to(DEVICE)
+
     with torch.no_grad():
-        edad = modelo(tensor).item()
-    return f"Edad estimada: {round(edad)} anos"
+        class_prob, age_pred = modelo(tensor)
+        prob_mayor = class_prob.item()
+        edad_aprox = round(age_pred.item())
+
+    # Determinar clasificación
+    es_mayor = prob_mayor >= 0.5
+    prob_display = prob_mayor if es_mayor else (1 - prob_mayor)
+
+    if es_mayor:
+        resultado = f"✅ MAYOR DE EDAD ({prob_display:.0%} probabilidad)"
+    else:
+        resultado = f"❌ MENOR DE EDAD ({prob_display:.0%} probabilidad)"
+
+    resultado += f"\n   Edad aproximada: {edad_aprox} años"
+    return resultado
 
 
 # ---- Interfaz Gradio ----
@@ -125,12 +141,12 @@ with gr.Blocks(title="Verificacion de Edad", theme=gr.themes.Soft()) as demo:
 
     # ── PASO 2: Estimacion de edad ──
     with gr.Group(visible=False) as paso2:
-        gr.Markdown("## Paso 2 — Estimacion de edad")
-        gr.Markdown("Identidad verificada. Sube ahora una foto del rostro para estimar la edad.")
+        gr.Markdown("## Paso 2 — Verificacion de edad")
+        gr.Markdown("Identidad verificada. Sube ahora una foto del rostro para verificar si es mayor de edad.")
 
         entrada_imagen = gr.Image(label="Foto del rostro", type="numpy")
-        btn_predecir = gr.Button("Estimar edad", variant="primary", size="lg")
-        salida_edad = gr.Textbox(label="Resultado edad", interactive=False)
+        btn_predecir = gr.Button("Verificar edad", variant="primary", size="lg")
+        salida_edad = gr.Textbox(label="Resultado", interactive=False)
 
     # ── Eventos ──
     btn_nueva_frase.click(fn=nueva_frase, outputs=frase_estado)

@@ -16,9 +16,11 @@ def random_individual():
 
 def fitness(individual):
     print(f"\n  Evaluando: {individual}")
-    val_mae = train(config=individual)
-    print(f"  → Val MAE: {val_mae:.2f}")
-    return val_mae  # Menor MAE = mejor
+    val_loss = train(config=individual)
+    # fitness usa pérdida de validación (menor = mejor)
+    # La pérdida ahora combina clasificación y regresión
+    print(f"  → Val Loss: {val_loss:.4f}")
+    return val_loss  # Menor pérdida = mejor
 
 def select_parents(population, scores):
     # Selección por torneo: elige el mejor de 2 aleatorios
@@ -61,7 +63,7 @@ def genetic_algorithm(pop_size=6, generations=4):
             if score < best_score:
                 best_score = score
                 best_individual = population[i].copy()
-                print(f"  ★ Nuevo mejor global: {best_individual} → MAE: {best_score:.2f}")
+                print(f"  ★ Nuevo mejor global: {best_individual} → Val Loss: {best_score:.4f}")
 
         # Crear nueva generación
         new_population = []
@@ -75,7 +77,7 @@ def genetic_algorithm(pop_size=6, generations=4):
 
     print(f"\n=== Resultado Final ===")
     print(f"Mejores hiperparámetros: {best_individual}")
-    print(f"Mejor Val MAE: {best_score:.2f} años")
+    print(f"Mejor Val Loss: {best_score:.4f}")
     return best_individual, best_score
 
 

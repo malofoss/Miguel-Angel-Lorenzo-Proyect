@@ -4,10 +4,14 @@ from torch.utils.data import Dataset
 from PIL import Image
 from torchvision import transforms
 
+THRESHOLD = 18  # Edad mínima para ser considerado mayor de edad
+
+
 class UTKFaceDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, transform=None, threshold=THRESHOLD):
         self.root_dir = root_dir
         self.transform = transform
+        self.threshold = threshold
         self.images = []
         self.ages = []
 
@@ -30,12 +34,14 @@ class UTKFaceDataset(Dataset):
 
     def __getitem__(self, idx):
         image = Image.open(self.images[idx]).convert("RGB")
-        age = torch.tensor(self.ages[idx], dtype=torch.float32)
+        age_real = torch.tensor(self.ages[idx], dtype=torch.float32)
+        # Clasificación binaria: 0 = menor de edad, 1 = mayor de edad
+        age_binary = torch.tensor(1.0 if self.ages[idx] >= self.threshold else 0.0, dtype=torch.float32)
 
         if self.transform:
             image = self.transform(image)
 
-        return image, age
+        return image, age_binary, age_real
 
 
 # Transformaciones estándar para la CNN

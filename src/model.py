@@ -9,20 +9,36 @@ class AgeEstimatorCNN(nn.Module):
         # ResNet18 preentrenada como base
         self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
 
-        # Sustituimos la última capa por una cabeza de regresión
+        # Extraer features antes de la capa final
         in_features = self.backbone.fc.in_features
+
+        # Cabeza compartida para extraer features
         self.backbone.fc = nn.Sequential(
             nn.Linear(in_features, 256),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(256, 64),
             nn.ReLU(),
+        )
+
+        # Cabeza de clasificación binaria (mayor/menor de edad)
+        self.classifier = nn.Sequential(
             nn.Dropout(dropout),
-            nn.Linear(64, 1)  # Salida: un solo número (la edad)
+            nn.Linear(64, 1),
+            nn.Sigmoid()
+        )
+
+        # Cabeza de regresión para edad aproximada
+        self.regressor = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(64, 1)
         )
 
     def forward(self, x):
-        return self.backbone(x).squeeze(1)
+        features = self.backbone(x)  # (batch, 64)
+        class_prob = self.classifier(features).squeeze(1)  # (batch,) probabilidad mayor de edad
+        age_pred = self.regressor(features).squeeze(1)  # (batch,) edad aproximada
+        return class_prob, age_pred
 
 
 def build_model(dropout=0.5):
@@ -35,8 +51,10 @@ if __name__ == "__main__":
     print(model)
 
     # Prueba rápida con un batch falso
-    dummy_input = torch.randn(4, 3, 128, 128)  # 4 imágenes, 3 canales, 128x128
-    output = model(dummy_input)
-    print(f"Input shape:  {dummy_input.shape}")
-    print(f"Output shape: {output.shape}")   # Esperado: torch.Size([4])
-    print(f"Predicciones de prueba: {output}")
+    dummy_input = torch.randn(4, 3, 224, 224)  # 4 imágenes, 3 canales, 224x224 (ResNet standard)
+    class_prob, age_pred = model(dummy_input)
+    print(f"Input shape:       {dummy_input.shape}")
+    print(f"Class prob shape:  {class_prob.shape}")  # Esperado: torch.Size([4])
+    print(f"Age pred shape:    {age_pred.shape}")    # Esperado: torch.Size([4])
+    print(f"Probabilidades mayor de edad: {class_prob}")
+    print(f"Edades aproximadas: {age_pred}")
