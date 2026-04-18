@@ -21,7 +21,8 @@ IMG_SIZE = 224
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 TRANSFORM = transforms.Compose([
-    transforms.Resize((IMG_SIZE, IMG_SIZE)),
+    transforms.Resize(256),            # Re-escala un poco por encima
+    transforms.CenterCrop(IMG_SIZE),   # Recorta el borde exacto (quita distracciones y marcos blancos)
     transforms.ToTensor(),
     transforms.Normalize(
         mean=[0.485, 0.456, 0.406],

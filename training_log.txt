@@ -42,3 +42,52 @@ Epoch [16/20] Train - Loss: 1.1357 | Acc: 99.50% | F1: 99.70%
               Val   - Loss: 1.6290 | Acc: 97.20% | F1: 98.30%
 Epoch [17/20] Train - Loss: 1.1382 | Acc: 99.51% | F1: 99.70%
               Val   - Loss: 1.6675 | Acc: 96.96% | F1: 98.17%
+Usando dispositivo: cpu
+Usando dispositivo: cuda
+Epoch [1/20] Train - Loss: 3.2462 | Acc: 92.15% | F1: 95.34%
+              Val   - Loss: 1.7871 | Acc: 96.54% | F1: 97.94%
+  [OK] Nuevo mejor modelo guardado (Val Acc: 96.54%)
+Epoch [2/20] Train - Loss: 2.0480 | Acc: 96.32% | F1: 97.77%
+              Val   - Loss: 1.7125 | Acc: 96.79% | F1: 98.06%
+  [OK] Nuevo mejor modelo guardado (Val Acc: 96.79%)
+Epoch [3/20] Train - Loss: 1.8737 | Acc: 97.04% | F1: 98.20%
+              Val   - Loss: 1.6968 | Acc: 97.03% | F1: 98.20%
+  [OK] Nuevo mejor modelo guardado (Val Acc: 97.03%)
+Epoch [4/20] Train - Loss: 1.7263 | Acc: 97.66% | F1: 98.58%
+              Val   - Loss: 1.7159 | Acc: 96.18% | F1: 97.67%
+Epoch [5/20] Train - Loss: 1.5732 | Acc: 97.99% | F1: 98.78%
+              Val   - Loss: 1.6699 | Acc: 97.57% | F1: 98.55%
+  [OK] Nuevo mejor modelo guardado (Val Acc: 97.57%)
+Epoch [6/20] Train - Loss: 1.4965 | Acc: 98.17% | F1: 98.88%
+              Val   - Loss: 1.6436 | Acc: 97.45% | F1: 98.47%
+Epoch [7/20] Train - Loss: 1.4245 | Acc: 98.59% | F1: 99.14%
+              Val   - Loss: 1.5710 | Acc: 97.32% | F1: 98.39%
+Epoch [8/20] Train - Loss: 1.3470 | Acc: 98.82% | F1: 99.28%
+              Val   - Loss: 1.6097 | Acc: 97.66% | F1: 98.59%
+  [OK] Nuevo mejor modelo guardado (Val Acc: 97.66%)
+Epoch [9/20] Train - Loss: 1.3006 | Acc: 98.85% | F1: 99.30%
+              Val   - Loss: 1.6488 | Acc: 96.75% | F1: 98.02%
+Epoch [10/20] Train - Loss: 1.2672 | Acc: 99.00% | F1: 99.39%
+              Val   - Loss: 1.6100 | Acc: 97.24% | F1: 98.34%
+Epoch [11/20] Train - Loss: 1.2078 | Acc: 99.12% | F1: 99.46%
+              Val   - Loss: 1.6086 | Acc: 97.62% | F1: 98.57%
+Epoch [12/20] Train - Loss: 1.1730 | Acc: 99.20% | F1: 99.51%
+              Val   - Loss: 1.6169 | Acc: 97.53% | F1: 98.52%
+Epoch [13/20] Train - Loss: 1.1618 | Acc: 99.25% | F1: 99.54%
+              Val   - Loss: 1.6054 | Acc: 97.43% | F1: 98.46%
+Epoch [14/20] Train - Loss: 1.1337 | Acc: 99.40% | F1: 99.64%
+              Val   - Loss: 1.5885 | Acc: 97.49% | F1: 98.50%
+Epoch [15/20] Train - Loss: 1.0980 | Acc: 99.38% | F1: 99.62%
+              Val   - Loss: 1.5622 | Acc: 97.45% | F1: 98.46%
+Epoch [16/20] Train - Loss: 1.0958 | Acc: 99.40% | F1: 99.64%
+              Val   - Loss: 1.6124 | Acc: 97.28% | F1: 98.38%
+Epoch [17/20] Train - Loss: 1.0743 | Acc: 99.38% | F1: 99.62%
+              Val   - Loss: 1.6165 | Acc: 97.11% | F1: 98.25%
+Epoch [18/20] Train - Loss: 1.0755 | Acc: 99.58% | F1: 99.75%
+              Val   - Loss: 1.6053 | Acc: 97.51% | F1: 98.50%
+Epoch [19/20] Train - Loss: 1.0595 | Acc: 99.44% | F1: 99.66%
+              Val   - Loss: 1.5447 | Acc: 97.51% | F1: 98.51%
+Epoch [20/20] Train - Loss: 1.0360 | Acc: 99.52% | F1: 99.71%
+              Val   - Loss: 1.5451 | Acc: 97.51% | F1: 98.50%
+
+Entrenamiento completado. Mejor Val Acc: 97.66%

@@ -44,19 +44,30 @@ class UTKFaceDataset(Dataset):
         return image, age_binary, age_real
 
 
-# Transformaciones estándar para la CNN
+# Transformaciones estándar para la CNN (con Aumento Extremo para arreglar sesgos de fondo)
 def get_transforms():
     train_transform = transforms.Compose([
-        transforms.Resize((128, 128)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2),
+        # 1. Resolución nativa: Evita distorsionar las texturas (arrugas)
+        transforms.Resize(256),
+        # 2. Recortes aleatorios y mini-zooms: Hace que el fondo cambie constantemente cada iteración
+        transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
+        # 3. Simetría: Las caras son iguales en espejo
+        transforms.RandomHorizontalFlip(p=0.5),
+        # 4. Giros: 15 grados compensa las cabezas torcidas
+        transforms.RandomRotation(15),
+        # 5. Colores: Variar la iluminación ayuda a no clasificar basándose en el color general de la foto
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2, hue=0.1),
         transforms.ToTensor(),
+        # 6. Random Erasing: Tapa aleatoriamente con cuadrados negros pedazos de 
+        # la foto. Fuerza a la red a no depender de UN SOLO rastro (ej. el pelo)
+        transforms.RandomErasing(p=0.2, scale=(0.02, 0.1)),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ])
 
     val_transform = transforms.Compose([
-        transforms.Resize((128, 128)),
+        transforms.Resize(256),
+        transforms.CenterCrop(224), # Evaluación de forma clásica y estricta
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
