@@ -8,7 +8,6 @@ import tempfile
 import os
 import sys
 import scipy.io.wavfile as wav
-import cv2
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -20,7 +19,6 @@ from gradcam import AgeGradCAM
 WEIGHTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'weights', 'best_model.pth')
 IMG_SIZE = 224
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 TRANSFORM = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
@@ -94,25 +92,7 @@ def predecir_edad(imagen):
     if imagen is None:
         return "Sin imagen cargada.", None
 
-    # NOVEDAD: Detección y recorte de rostro
-    gray = cv2.cvtColor(imagen, cv2.COLOR_RGB2GRAY)
-    faces = FACE_CASCADE.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-
-    if len(faces) > 0:
-        # Usar el rostro más grande detectado (por si hay gente atrás)
-        faces = sorted(faces, key=lambda f: f[2]*f[3], reverse=True)
-        x, y, w, h = faces[0]
-        
-        # Añadir margen del 20% para incluir frente y barbilla
-        margin = int(w * 0.2)
-        x1, y1 = max(0, x - margin), max(0, y - int(margin*1.5))
-        x2, y2 = min(imagen.shape[1], x + w + margin), min(imagen.shape[0], y + h + margin)
-        
-        imagen_rostro = imagen[y1:y2, x1:x2]
-    else:
-        imagen_rostro = imagen # Fallback por si la IA clásica no ve la cara
-
-    img_pil = Image.fromarray(imagen_rostro).convert("RGB")
+    img_pil = Image.fromarray(imagen).convert("RGB")
     tensor = TRANSFORM(img_pil).unsqueeze(0).to(DEVICE)
 
     # Iniciar el explicador usando la capa convolucional final de ResNet
@@ -120,7 +100,7 @@ def predecir_edad(imagen):
     
     # Generar el heatmap y obtener predicciones 
     # (No usamos torch.no_grad() porque necesitamos los gradientes para la explicabilidad)
-    heatmap_img, class_prob, age_pred = cam.generate_heatmap(tensor, imagen_rostro)
+    heatmap_img, class_prob, age_pred = cam.generate_heatmap(tensor, imagen)
     
     prob_mayor = class_prob.item()
     edad_aprox = round(age_pred.item())
