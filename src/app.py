@@ -8,16 +8,19 @@ import tempfile
 import os
 import sys
 import scipy.io.wavfile as wav
+import cv2
 
 sys.path.append(os.path.dirname(__file__))
 
 from model import AgeEstimatorCNN
 from speech_nlp import obtener_frase_aleatoria, verificar_lectura
+from gradcam import AgeGradCAM
 
 # ---- Configuracion ----
 WEIGHTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'weights', 'best_model.pth')
 IMG_SIZE = 224
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
 TRANSFORM = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
@@ -87,29 +90,52 @@ def verificar_voz(audio, frase):
         return msg, gr.update(visible=True), gr.update(visible=False)
 
 def predecir_edad(imagen):
-    """Predice si es mayor de edad y la edad aproximada."""
+    """Predice si es mayor de edad, la edad aproximada y genera el Grad-CAM."""
     if imagen is None:
-        return "Sin imagen cargada."
+        return "Sin imagen cargada.", None
 
-    img_pil = Image.fromarray(imagen).convert("RGB")
+    # NOVEDAD: Detección y recorte de rostro
+    gray = cv2.cvtColor(imagen, cv2.COLOR_RGB2GRAY)
+    faces = FACE_CASCADE.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+    if len(faces) > 0:
+        # Usar el rostro más grande detectado (por si hay gente atrás)
+        faces = sorted(faces, key=lambda f: f[2]*f[3], reverse=True)
+        x, y, w, h = faces[0]
+        
+        # Añadir margen del 20% para incluir frente y barbilla
+        margin = int(w * 0.2)
+        x1, y1 = max(0, x - margin), max(0, y - int(margin*1.5))
+        x2, y2 = min(imagen.shape[1], x + w + margin), min(imagen.shape[0], y + h + margin)
+        
+        imagen_rostro = imagen[y1:y2, x1:x2]
+    else:
+        imagen_rostro = imagen # Fallback por si la IA clásica no ve la cara
+
+    img_pil = Image.fromarray(imagen_rostro).convert("RGB")
     tensor = TRANSFORM(img_pil).unsqueeze(0).to(DEVICE)
 
-    with torch.no_grad():
-        class_prob, age_pred = modelo(tensor)
-        prob_mayor = class_prob.item()
-        edad_aprox = round(age_pred.item())
+    # Iniciar el explicador usando la capa convolucional final de ResNet
+    cam = AgeGradCAM(modelo, modelo.backbone.layer4)
+    
+    # Generar el heatmap y obtener predicciones 
+    # (No usamos torch.no_grad() porque necesitamos los gradientes para la explicabilidad)
+    heatmap_img, class_prob, age_pred = cam.generate_heatmap(tensor, imagen_rostro)
+    
+    prob_mayor = class_prob.item()
+    edad_aprox = round(age_pred.item())
 
     # Determinar clasificación
     es_mayor = prob_mayor >= 0.5
     prob_display = prob_mayor if es_mayor else (1 - prob_mayor)
 
     if es_mayor:
-        resultado = f"✅ MAYOR DE EDAD ({prob_display:.0%} probabilidad)"
+        resultado = f"MAYOR DE EDAD ({prob_display:.0%} probabilidad)"
     else:
-        resultado = f"❌ MENOR DE EDAD ({prob_display:.0%} probabilidad)"
+        resultado = f"MENOR DE EDAD ({prob_display:.0%} probabilidad)"
 
     resultado += f"\n   Edad aproximada: {edad_aprox} años"
-    return resultado
+    return resultado, heatmap_img
 
 
 # ---- Interfaz Gradio ----
@@ -147,6 +173,7 @@ with gr.Blocks(title="Verificacion de Edad", theme=gr.themes.Soft()) as demo:
         entrada_imagen = gr.Image(label="Foto del rostro", type="numpy")
         btn_predecir = gr.Button("Verificar edad", variant="primary", size="lg")
         salida_edad = gr.Textbox(label="Resultado", interactive=False)
+        salida_heatmap = gr.Image(label="Lo que mira la IA (Grad-CAM)")
 
     # ── Eventos ──
     btn_nueva_frase.click(fn=nueva_frase, outputs=frase_estado)
@@ -160,7 +187,7 @@ with gr.Blocks(title="Verificacion de Edad", theme=gr.themes.Soft()) as demo:
     btn_predecir.click(
         fn=predecir_edad,
         inputs=[entrada_imagen],
-        outputs=[salida_edad]
+        outputs=[salida_edad, salida_heatmap]
     )
 
 if __name__ == "__main__":
