@@ -12,7 +12,7 @@ import scipy.io.wavfile as wav
 sys.path.append(os.path.dirname(__file__))
 
 from model import AgeEstimatorCNN
-from speech_nlp import obtener_frase_aleatoria, verificar_lectura
+from speech_nlp import obtener_frase_aleatoria, verificar_lectura, generar_audio_guia
 from gradcam import AgeGradCAM
 
 # ---- Configuracion ----
@@ -41,6 +41,11 @@ modelo = cargar_modelo()
 
 def nueva_frase():
     return obtener_frase_aleatoria()
+
+def bienvenida():
+    """Genera mensaje de bienvenida al iniciar la app."""
+    msg = "Bienvenido al sistema de verificación de edad. Por favor, lee en voz alta la frase que aparece en pantalla para comenzar."
+    return generar_audio_guia(msg)
 
 def transcribir_desde_gradio(audio):
     if audio is None:
@@ -73,8 +78,9 @@ def verificar_voz(audio, frase):
     """
     Verifica la voz y devuelve:
     - mensaje de resultado
-    - visibilidad del paso 1 (se oculta si pasa)
-    - visibilidad del paso 2 (se muestra si pasa)
+    - visibilidad del paso 1
+    - visibilidad del paso 2
+    - audio de la guia
     """
     transcripcion = transcribir_desde_gradio(audio)
     resultado = verificar_lectura(frase, transcripcion, umbral=0.75)
@@ -83,10 +89,12 @@ def verificar_voz(audio, frase):
 
     if resultado["verificado"]:
         msg = f"VERIFICADO ({similitud:.0%}) — Transcrito: \"{detectado}\"\nAvanzando a verificacion de edad..."
-        return msg, gr.update(visible=False), gr.update(visible=True)
+        audio_guia = generar_audio_guia("Identidad verificada con éxito. Ahora, por favor, sube una foto de tu rostro para verificar tu edad.")
+        return msg, gr.update(visible=False), gr.update(visible=True), audio_guia
     else:
         msg = f"NO VERIFICADO ({similitud:.0%}) — Transcrito: \"{detectado}\"\nVuelve a intentarlo."
-        return msg, gr.update(visible=True), gr.update(visible=False)
+        audio_guia = generar_audio_guia("No he podido verificar tu voz. Por favor, inténtalo de nuevo leyendo la frase con claridad.")
+        return msg, gr.update(visible=True), gr.update(visible=False), audio_guia
 
 def predecir_edad(imagen):
     """Predice si es mayor de edad, la edad aproximada y genera el Grad-CAM."""
@@ -112,21 +120,73 @@ def predecir_edad(imagen):
 
     if es_mayor:
         resultado = f"MAYOR DE EDAD ({prob_display:.0%} probabilidad)"
+        voz_msg = f"El sistema estima que eres mayor de edad, con aproximadamente {edad_aprox} años."
     else:
         resultado = f"MENOR DE EDAD ({prob_display:.0%} probabilidad)"
+        voz_msg = f"El sistema estima que eres menor de edad, con aproximadamente {edad_aprox} años."
 
     resultado += f"\n   Edad aproximada: {edad_aprox} años"
-    return resultado, heatmap_img
+    audio_guia = generar_audio_guia(voz_msg)
+    
+    return resultado, heatmap_img, audio_guia
 
+
+# ---- Estilos CSS ----
+CSS = """
+.hero-container {
+    padding: 60px 20px;
+    text-align: center;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin: 20px auto;
+    max-width: 800px;
+}
+.hero-title {
+    color: #1a365d;
+    font-size: 2.8rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    letter-spacing: -0.025em;
+}
+.hero-subtitle {
+    color: #4a5568;
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto 2.5rem auto;
+    line-height: 1.6;
+}
+.center-btn {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+"""
 
 # ---- Interfaz Gradio ----
 
-with gr.Blocks(title="Verificacion de Edad", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Verificación de Edad", theme=gr.themes.Soft(), css=CSS) as demo:
 
-    gr.Markdown("# Sistema de Verificacion de Edad")
+    gr.Markdown("# Sistema de Verificación de Edad")
+
+    # Altavoz para la guia por voz (Debe ser visible para asegurar la reproduccion en algunos navegadores)
+    guia_audio = gr.Audio(interactive=False, label="Guía por Voz (IA)", autoplay=True)
+
+    # ── INICIO: Desbloqueo de audio ──
+    with gr.Group(visible=True) as inicio:
+        gr.HTML("""
+        <div class="hero-container">
+            <h1 class="hero-title">Sistema de Verificación de Identidad</h1>
+            <p class="hero-subtitle">
+                Acceso seguro mediante biometría de voz y estimación de edad por visión artificial.
+            </p>
+        </div>
+        """)
+        with gr.Row(elem_classes="center-btn"):
+            btn_iniciar = gr.Button("Iniciar Sistema de Verificación", variant="primary", size="lg")
 
     # ── PASO 1: Verificacion por voz ──
-    with gr.Group(visible=True) as paso1:
+    with gr.Group(visible=False) as paso1:
         gr.Markdown("## Paso 1 — Verificacion por voz")
         gr.Markdown("Lee en voz alta la frase que aparece a continuacion y pulsa **Verificar voz**.")
 
@@ -162,13 +222,19 @@ with gr.Blocks(title="Verificacion de Edad", theme=gr.themes.Soft()) as demo:
     btn_verificar_voz.click(
         fn=verificar_voz,
         inputs=[entrada_audio, frase_estado],
-        outputs=[salida_voz, paso1, paso2]
+        outputs=[salida_voz, paso1, paso2, guia_audio]
     )
 
     btn_predecir.click(
         fn=predecir_edad,
         inputs=[entrada_imagen],
-        outputs=[salida_edad, salida_heatmap]
+        outputs=[salida_edad, salida_heatmap, guia_audio]
+    )
+
+    # El inicio activa la bienvenida y muestra el paso 1
+    btn_iniciar.click(
+        fn=lambda: (bienvenida(), gr.update(visible=False), gr.update(visible=True)),
+        outputs=[guia_audio, inicio, paso1]
     )
 
 if __name__ == "__main__":

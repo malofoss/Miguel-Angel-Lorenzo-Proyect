@@ -3,6 +3,9 @@ import random
 import unicodedata
 import re
 from difflib import SequenceMatcher
+from gtts import gTTS
+import tempfile
+import os
 
 # === FRASES ANTI-FRAUDE ===
 FRASES = [
@@ -98,7 +101,24 @@ def pipeline_antifraude(duracion: int = 5, umbral: float = 0.75) -> dict:
     print(f"\n  Resultado: {estado} (similitud: {resultado['similitud']:.1%})")
     return resultado
 
+def generar_audio_guia(texto: str, idioma: str = "es") -> str:
+    """
+    Convierte texto a voz y lo guarda en un archivo temporal .mp3.
+    Devuelve la ruta del archivo.
+    """
+    tts = gTTS(text=texto, lang=idioma)
+    
+    # Creamos un archivo temporal que no se borre inmediatamente
+    # para que Gradio pueda leerlo antes de que desaparezca.
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+    tts.save(temp_file.name)
+    temp_file.close()
+    
+    return temp_file.name
+
 
 if __name__ == "__main__":
-    resultado = pipeline_antifraude(duracion=6)
-    print("\nResultado completo:", resultado)
+    # Prueba rapida de generacion de audio
+    ruta = generar_audio_guia("Hola, esto es una prueba de la guia por voz.")
+    print(f"Audio generado en: {ruta}")
+    # Nota: El archivo se queda en el sistema temporalmente.
