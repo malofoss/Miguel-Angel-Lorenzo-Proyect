@@ -49,7 +49,7 @@ def train(config=None):
         }
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    log_progress(f"Usando dispositivo: {device}")
+    log_progress(f"Using device: {device}")
 
     # Cargar dataset
     train_transform, val_transform = get_transforms()
@@ -149,9 +149,9 @@ def train(config=None):
             best_val_loss = val_loss
             os.makedirs("weights", exist_ok=True)
             torch.save(model.state_dict(), "weights/best_model.pth")
-            log_progress(f"  [OK] Nuevo mejor modelo guardado (Val Acc: {val_acc:.2%})")
+            log_progress(f"  [OK] New best model saved (Val Acc: {val_acc:.2%})")
 
-    log_progress(f"\nEntrenamiento completado. Mejor Val Acc: {best_val_acc:.2%}")
+    log_progress(f"\nTraining completed. Best Val Acc: {best_val_acc:.2%}")
     return best_val_loss
 
 

@@ -15,7 +15,7 @@ def random_individual():
     return {key: random.choice(values) for key, values in PARAM_GRID.items()}
 
 def fitness(individual):
-    print(f"\n  Evaluando: {individual}")
+    print(f"\n  Evaluating: {individual}")
     val_loss = train(config=individual)
     # fitness usa pérdida de validación (menor = mejor)
     # La pérdida ahora combina clasificación y regresión
@@ -44,7 +44,7 @@ def mutate(individual, mutation_rate=0.2):
     return individual
 
 def genetic_algorithm(pop_size=6, generations=4):
-    print("=== Algoritmo Genético - Búsqueda de Hiperparámetros ===\n")
+    print("=== Genetic Algorithm - Hyperparameter Search ===\n")
 
     # Población inicial aleatoria
     population = [random_individual() for _ in range(pop_size)]
@@ -53,7 +53,7 @@ def genetic_algorithm(pop_size=6, generations=4):
     best_score = float("inf")
 
     for gen in range(generations):
-        print(f"\n--- Generación {gen+1}/{generations} ---")
+        print(f"\n--- Generation {gen+1}/{generations} ---")
 
         # Evaluar fitness de cada individuo
         scores = [fitness(ind) for ind in population]
@@ -63,7 +63,7 @@ def genetic_algorithm(pop_size=6, generations=4):
             if score < best_score:
                 best_score = score
                 best_individual = population[i].copy()
-                print(f"  ★ Nuevo mejor global: {best_individual} → Val Loss: {best_score:.4f}")
+                print(f"  ★ New global best: {best_individual} → Val Loss: {best_score:.4f}")
 
         # Crear nueva generación
         new_population = []
@@ -75,9 +75,9 @@ def genetic_algorithm(pop_size=6, generations=4):
 
         population = new_population
 
-    print(f"\n=== Resultado Final ===")
-    print(f"Mejores hiperparámetros: {best_individual}")
-    print(f"Mejor Val Loss: {best_score:.4f}")
+    print(f"\n=== Final Result ===")
+    print(f"Best hyperparameters: {best_individual}")
+    print(f"Best Val Loss: {best_score:.4f}")
     return best_individual, best_score
 
 

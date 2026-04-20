@@ -7,13 +7,13 @@ from gtts import gTTS
 import tempfile
 import os
 
-# === FRASES ANTI-FRAUDE ===
+# === ANTI-FRAUD PHRASES ===
 FRASES = [
-    "El cielo es azul y las nubes son blancas",
-    "Hoy es un buen dia para aprender algo nuevo",
-    "La tecnologia avanza muy rapidamente en el mundo",
-    "Los arboles crecen hacia la luz del sol",
-    "El agua del rio fluye hacia el mar",
+    "Hello my name is John",
+    "The big cat is sleeping",
+    "I want to eat a green apple",
+    "The weather is very nice",
+    "I have a small house",
 ]
 
 def normalizar(texto: str) -> str:
@@ -32,32 +32,32 @@ def obtener_frase_aleatoria() -> str:
     """Selecciona una frase aleatoria del banco de frases."""
     return random.choice(FRASES)
 
-def transcribir_audio(duracion: int = 5, idioma: str = "es-ES") -> str | None:
+def transcribir_audio(duracion: int = 5, idioma: str = "en-US") -> str | None:
     """
     Graba audio del microfono y lo transcribe.
     Devuelve el texto transcrito o None si falla.
     """
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
-        print("  [INFO] Ajustando ruido de fondo...")
+        print("  [INFO] Adjusting background noise...")
         recognizer.adjust_for_ambient_noise(source, duration=1)
-        print(f"  [REC] Grabando ({duracion}s)... Habla ahora!")
+        print(f"  [REC] Recording ({duracion}s)... Speak now!")
         try:
             audio = recognizer.listen(source, timeout=duracion + 2, phrase_time_limit=duracion)
         except sr.WaitTimeoutError:
-            print("  [WARNING] No se detecto voz.")
+            print("  [WARNING] No speech detected.")
             return None
 
-    print("  [INFO] Transcribiendo...")
+    print("  [INFO] Transcribing...")
     try:
         texto = recognizer.recognize_google(audio, language=idioma)
-        print(f"  [TEXT] Transcripcion: '{texto}'")
+        print(f"  [TEXT] Transcription: '{texto}'")
         return texto
     except sr.UnknownValueError:
-        print("  [WARNING] No se pudo entender el audio.")
+        print("  [WARNING] Could not understand audio.")
         return None
     except sr.RequestError as e:
-        print(f"  [ERROR] Error con la API de Google: {e}")
+        print(f"  [ERROR] Google API error: {e}")
         return None
 
 def verificar_lectura(frase_esperada: str, texto_transcrito: str, umbral: float = 0.75) -> dict:
@@ -66,7 +66,7 @@ def verificar_lectura(frase_esperada: str, texto_transcrito: str, umbral: float 
     Devuelve dict con resultado y puntuacion de similitud.
     """
     if texto_transcrito is None:
-        return {"verificado": False, "similitud": 0.0, "motivo": "Sin transcripcion"}
+        return {"verificado": False, "similitud": 0.0, "motivo": "No transcription"}
 
     score = similitud(frase_esperada, texto_transcrito)
     verificado = score >= umbral
@@ -76,7 +76,7 @@ def verificar_lectura(frase_esperada: str, texto_transcrito: str, umbral: float 
         "similitud": round(score, 3),
         "frase_esperada": frase_esperada,
         "frase_detectada": texto_transcrito,
-        "motivo": "OK" if verificado else f"Similitud insuficiente ({score:.1%} < {umbral:.0%})"
+        "motivo": "OK" if verificado else f"Insufficient similarity ({score:.1%} < {umbral:.0%})"
     }
 
 def pipeline_antifraude(duracion: int = 5, umbral: float = 0.75) -> dict:
@@ -90,18 +90,18 @@ def pipeline_antifraude(duracion: int = 5, umbral: float = 0.75) -> dict:
     """
     frase = obtener_frase_aleatoria()
     print(f"\n{'='*50}")
-    print(f"  LEE EN VOZ ALTA:")
+    print(f"  READ OUT LOUD:")
     print(f"  '{frase}'")
     print(f"{'='*50}\n")
 
     transcripcion = transcribir_audio(duracion=duracion)
     resultado = verificar_lectura(frase, transcripcion, umbral=umbral)
 
-    estado = "VERIFICADO" if resultado["verificado"] else "FRAUDE DETECTADO"
-    print(f"\n  Resultado: {estado} (similitud: {resultado['similitud']:.1%})")
+    estado = "VERIFIED" if resultado["verificado"] else "FRAUD DETECTED"
+    print(f"\n  Result: {estado} (similarity: {resultado['similitud']:.1%})")
     return resultado
 
-def generar_audio_guia(texto: str, idioma: str = "es") -> str:
+def generar_audio_guia(texto: str, idioma: str = "en") -> str:
     """
     Convierte texto a voz y lo guarda en un archivo temporal .mp3.
     Devuelve la ruta del archivo.
@@ -118,7 +118,7 @@ def generar_audio_guia(texto: str, idioma: str = "es") -> str:
 
 
 if __name__ == "__main__":
-    # Prueba rapida de generacion de audio
-    ruta = generar_audio_guia("Hola, esto es una prueba de la guia por voz.")
-    print(f"Audio generado en: {ruta}")
-    # Nota: El archivo se queda en el sistema temporalmente.
+    # Quick test of audio generation
+    ruta = generar_audio_guia("Hello, this is a test of the voice guidance system.")
+    print(f"Audio generated at: {ruta}")
+    # Note: File stays in temp directory.

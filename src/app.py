@@ -44,7 +44,7 @@ def nueva_frase():
 
 def bienvenida():
     """Genera mensaje de bienvenida al iniciar la app."""
-    msg = "Bienvenido al sistema de verificación de edad. Por favor, lee en voz alta la frase que aparece en pantalla para comenzar."
+    msg = "Welcome to the age verification system. Please read the phrase shown on the screen out loud to begin."
     return generar_audio_guia(msg)
 
 def transcribir_desde_gradio(audio):
@@ -66,7 +66,7 @@ def transcribir_desde_gradio(audio):
     try:
         with sr.AudioFile(ruta_tmp) as source:
             audio_rec = recognizer.record(source)
-        texto = recognizer.recognize_google(audio_rec, language="es-ES")
+        texto = recognizer.recognize_google(audio_rec, language="en-US")
         return texto
     except (sr.UnknownValueError, sr.RequestError):
         return None
@@ -84,22 +84,22 @@ def verificar_voz(audio, frase):
     """
     transcripcion = transcribir_desde_gradio(audio)
     resultado = verificar_lectura(frase, transcripcion, umbral=0.75)
-    detectado = resultado.get("frase_detectada", "No detectado")
+    detectado = resultado.get("frase_detectada", "Not detected")
     similitud = resultado["similitud"]
 
     if resultado["verificado"]:
-        msg = f"VERIFICADO ({similitud:.0%}) — Transcrito: \"{detectado}\"\nAvanzando a verificacion de edad..."
-        audio_guia = generar_audio_guia("Identidad verificada con éxito. Ahora, por favor, sube una foto de tu rostro para verificar tu edad.")
+        msg = f"VERIFIED ({similitud:.0%}) — Transcribed: \"{detectado}\"\nProceeding to age estimation..."
+        audio_guia = generar_audio_guia("Identity successfully verified. Now, please upload a photo of your face to verify your age.")
         return msg, gr.update(visible=False), gr.update(visible=True), audio_guia
     else:
-        msg = f"NO VERIFICADO ({similitud:.0%}) — Transcrito: \"{detectado}\"\nVuelve a intentarlo."
-        audio_guia = generar_audio_guia("No he podido verificar tu voz. Por favor, inténtalo de nuevo leyendo la frase con claridad.")
+        msg = f"NOT VERIFIED ({similitud:.0%}) — Transcribed: \"{detectado}\"\nPlease try again."
+        audio_guia = generar_audio_guia("I could not verify your voice. Please try again, making sure to read the phrase clearly.")
         return msg, gr.update(visible=True), gr.update(visible=False), audio_guia
 
 def predecir_edad(imagen):
     """Predice si es mayor de edad, la edad aproximada y genera el Grad-CAM."""
     if imagen is None:
-        return "Sin imagen cargada.", None
+        return "No image uploaded.", None
 
     img_pil = Image.fromarray(imagen).convert("RGB")
     tensor = TRANSFORM(img_pil).unsqueeze(0).to(DEVICE)
@@ -119,19 +119,19 @@ def predecir_edad(imagen):
     prob_display = prob_mayor if es_mayor else (1 - prob_mayor)
 
     if es_mayor:
-        resultado = f"MAYOR DE EDAD ({prob_display:.0%} probabilidad)"
-        voz_msg = f"El sistema estima que eres mayor de edad, con aproximadamente {edad_aprox} años."
+        resultado = f"ADULT ({prob_display:.0%} probability)"
+        voz_msg = f"The system estimates you are an adult, approximately {edad_aprox} years old."
     else:
-        resultado = f"MENOR DE EDAD ({prob_display:.0%} probabilidad)"
-        voz_msg = f"El sistema estima que eres menor de edad, con aproximadamente {edad_aprox} años."
+        resultado = f"MINOR ({prob_display:.0%} probability)"
+        voz_msg = f"The system estimates you are a minor, approximately {edad_aprox} years old."
 
-    resultado += f"\n   Edad aproximada: {edad_aprox} años"
+    resultado += f"\n   Estimated Age: {edad_aprox} years old"
     audio_guia = generar_audio_guia(voz_msg)
     
     return resultado, heatmap_img, audio_guia
 
 
-# ---- Estilos CSS ----
+# ---- CSS Styles ----
 CSS = """
 .hero-container {
     padding: 60px 20px;
@@ -165,56 +165,56 @@ CSS = """
 
 # ---- Interfaz Gradio ----
 
-with gr.Blocks(title="Verificación de Edad", theme=gr.themes.Soft(), css=CSS) as demo:
+with gr.Blocks(title="Age Verification System", theme=gr.themes.Soft(), css=CSS) as demo:
 
-    gr.Markdown("# Sistema de Verificación de Edad")
+    gr.Markdown("# Age Verification System")
 
-    # Altavoz para la guia por voz (Debe ser visible para asegurar la reproduccion en algunos navegadores)
-    guia_audio = gr.Audio(interactive=False, label="Guía por Voz (IA)", autoplay=True)
+    # Speaker for the voice guide
+    guia_audio = gr.Audio(interactive=False, label="Voice Guide (AI)", autoplay=True)
 
     # ── INICIO: Desbloqueo de audio ──
     with gr.Group(visible=True) as inicio:
         gr.HTML("""
         <div class="hero-container">
-            <h1 class="hero-title">Sistema de Verificación de Identidad</h1>
+            <h1 class="hero-title">Identity Verification System</h1>
             <p class="hero-subtitle">
-                Acceso seguro mediante biometría de voz y estimación de edad por visión artificial.
+                Secure access through voice biometrics and computer vision-based age estimation.
             </p>
         </div>
         """)
         with gr.Row(elem_classes="center-btn"):
-            btn_iniciar = gr.Button("Iniciar Sistema de Verificación", variant="primary", size="lg")
+            btn_iniciar = gr.Button("Start Verification System", variant="primary", size="lg")
 
     # ── PASO 1: Verificacion por voz ──
     with gr.Group(visible=False) as paso1:
-        gr.Markdown("## Paso 1 — Verificacion por voz")
-        gr.Markdown("Lee en voz alta la frase que aparece a continuacion y pulsa **Verificar voz**.")
+        gr.Markdown("## Step 1 — Voice Verification")
+        gr.Markdown("Read the following phrase out loud and click **Verify Voice**.")
 
         frase_estado = gr.Textbox(
-            label="Frase a leer",
+            label="Phrase to read",
             value=obtener_frase_aleatoria(),
             interactive=False
         )
-        btn_nueva_frase = gr.Button("Nueva frase", variant="secondary")
+        btn_nueva_frase = gr.Button("New phrase", variant="secondary")
 
         entrada_audio = gr.Audio(
-            label="Graba tu voz",
+            label="Record your voice",
             sources=["microphone"],
             type="numpy"
         )
 
-        btn_verificar_voz = gr.Button("Verificar voz", variant="primary", size="lg")
-        salida_voz = gr.Textbox(label="Resultado verificacion", interactive=False)
+        btn_verificar_voz = gr.Button("Verify Voice", variant="primary", size="lg")
+        salida_voz = gr.Textbox(label="Verification Result", interactive=False)
 
     # ── PASO 2: Estimacion de edad ──
     with gr.Group(visible=False) as paso2:
-        gr.Markdown("## Paso 2 — Verificacion de edad")
-        gr.Markdown("Identidad verificada. Sube ahora una foto del rostro para verificar si es mayor de edad.")
+        gr.Markdown("## Step 2 — Age Estimation")
+        gr.Markdown("Identity verified. Now upload a face photo to check if you are an adult.")
 
-        entrada_imagen = gr.Image(label="Foto del rostro", type="numpy")
-        btn_predecir = gr.Button("Verificar edad", variant="primary", size="lg")
-        salida_edad = gr.Textbox(label="Resultado", interactive=False)
-        salida_heatmap = gr.Image(label="Lo que mira la IA (Grad-CAM)")
+        entrada_imagen = gr.Image(label="Face Photo", type="numpy")
+        btn_predecir = gr.Button("Verify Age", variant="primary", size="lg")
+        salida_edad = gr.Textbox(label="Result", interactive=False)
+        salida_heatmap = gr.Image(label="IA Focus (Grad-CAM)")
 
     # ── Eventos ──
     btn_nueva_frase.click(fn=nueva_frase, outputs=frase_estado)
