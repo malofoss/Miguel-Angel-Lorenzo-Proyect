@@ -15,14 +15,14 @@ from model import AgeEstimatorCNN
 from speech_nlp import obtener_frase_aleatoria, verificar_lectura, generar_audio_guia
 from gradcam import AgeGradCAM
 
-# ---- Configuracion ----
+# ---- Configuration ----
 WEIGHTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'weights', 'best_model.pth')
 IMG_SIZE = 224
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 TRANSFORM = transforms.Compose([
-    transforms.Resize(256),            # Re-escala un poco por encima
-    transforms.CenterCrop(IMG_SIZE),   # Recorta el borde exacto (quita distracciones y marcos blancos)
+    transforms.Resize(256),            # Re-scale slightly above target size
+    transforms.CenterCrop(IMG_SIZE),   # Exact crop to remove distractions and white borders
     transforms.ToTensor(),
     transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
@@ -114,15 +114,15 @@ def predecir_edad(imagen):
     prob_mayor = class_prob.item()
     edad_aprox = round(age_pred.item())
 
-    # Determinar clasificación
-    es_mayor = prob_mayor >= 0.5
+    # Determine classification based on estimated age (Consistency Fix)
+    es_mayor = edad_aprox >= 18
     prob_display = prob_mayor if es_mayor else (1 - prob_mayor)
 
     if es_mayor:
-        resultado = f"ADULT ({prob_display:.0%} probability)"
+        resultado = f"ADULT (Confidence: {prob_display:.0%})"
         voz_msg = f"The system estimates you are an adult, approximately {edad_aprox} years old."
     else:
-        resultado = f"MINOR ({prob_display:.0%} probability)"
+        resultado = f"MINOR (Confidence: {prob_display:.0%})"
         voz_msg = f"The system estimates you are a minor, approximately {edad_aprox} years old."
 
     resultado += f"\n   Estimated Age: {edad_aprox} years old"
@@ -165,7 +165,7 @@ CSS = """
 
 # ---- Interfaz Gradio ----
 
-with gr.Blocks(title="Age Verification System", theme=gr.themes.Soft(), css=CSS) as demo:
+with gr.Blocks(title="Age Verification System") as demo:
 
     gr.Markdown("# Age Verification System")
 
@@ -238,4 +238,4 @@ with gr.Blocks(title="Age Verification System", theme=gr.themes.Soft(), css=CSS)
     )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=gr.themes.Soft(), css=CSS)
