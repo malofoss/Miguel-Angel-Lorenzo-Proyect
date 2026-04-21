@@ -15,7 +15,7 @@ from model import AgeEstimatorCNN
 from speech_nlp import obtener_frase_aleatoria, verificar_lectura, generar_audio_guia
 from gradcam import AgeGradCAM
 
-# ---- Configuration ----
+# ---- Configuración ----
 WEIGHTS_PATH = os.path.join(os.path.dirname(__file__), '..', 'weights', 'best_model.pth')
 IMG_SIZE = 224
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -169,7 +169,7 @@ with gr.Blocks(title="Age Verification System") as demo:
 
     gr.Markdown("# Age Verification System")
 
-    # Speaker for the voice guide
+    # Guia de voz
     guia_audio = gr.Audio(interactive=False, label="Voice Guide (AI)", autoplay=True)
 
     # ── INICIO: Desbloqueo de audio ──
